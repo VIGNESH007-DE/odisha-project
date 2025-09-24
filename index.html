@@ -1,658 +1,678 @@
-import React, { useState, useEffect, useRef } from 'react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odisha Microgrid Monitor</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel for JSX in browser -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Chart.js & Leaflet.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+      /* Custom styles for Leaflet markers */
+      .marker-pin {
+        width: 30px;
+        height: 30px;
+        border-radius: 50% 50% 50% 0;
+        position: absolute;
+        transform: rotate(-45deg);
+        left: 50%;
+        top: 50%;
+        margin: -15px 0 0 -15px;
+      }
+      .marker-pin::after {
+        content: '';
+        width: 14px;
+        height: 14px;
+        margin: 8px 0 0 8px;
+        background: #fff;
+        position: absolute;
+        border-radius: 50%;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="root"></div>
 
-// --- MOCK DATA & TRANSLATIONS ---
-// In a real application, this would come from a backend/database and i18n library.
-const translations = {
-  en: {
-    projectName: "Odisha Microgrid Monitor",
-    tagline: "Reliable Smart Energy for Every Village",
-    welcomeMessage: "A web platform for monitoring and managing decentralized renewable energy projects across Odisha.",
-    login: "Login",
-    logout: "Logout",
-    selectRole: "Select Your Role",
-    communityUser: "Community User (Household)",
-    operator: "Operator (Village Technician)",
-    engineer: "Engineer (District/State Staff)",
-    admin: "Admin (Govt/NGO/Org)",
-    username: "Username / Mobile Number",
-    password: "Password",
-    otp: "Enter OTP",
-    dashboard: "Dashboard",
-    reports: "Reports",
-    alerts: "Alerts",
-    communityFeedback: "Community Feedback",
-    settings: "Settings",
-    language: "Language",
-    profile: "Profile",
-    notifications: "Notifications",
-    saveChanges: "Save Changes",
-    currentBalance: "Current Balance",
-    rechargeHistory: "Recharge History",
-    energyUsage: "Energy Usage (kWh)",
-    daily: "Daily",
-    weekly: "Weekly",
-    monthly: "Monthly",
-    lowBalanceAlert: "Low Balance Alert: Your balance is ₹25. Please recharge.",
-    unusualUsageAlert: "Unusual Usage: Your consumption was 50% higher than average yesterday.",
-    feedbackFormTitle: "Feedback / Complaint",
-    submit: "Submit",
-    pvGeneration: "PV Generation",
-    batteryStatus: "Battery Status",
-    stateOfCharge: "State of Charge (SoC)",
-    stateOfHealth: "State of Health (SoH)",
-    loadBreakdown: "Load Breakdown",
-    household: "Household",
-    livelihood: "Livelihood",
-    systemUptime: "System Uptime",
-    faultLogs: "Fault Logs",
-    financialMonitoring: "Financial Monitoring",
-    rechargeRecords: "Prepaid Recharge Records",
-    maintenanceTasks: "Maintenance Tasks & Logs",
-    panelCleaning: "Panel Cleaning",
-    batteryChecks: "Battery Checks",
-    inverterReset: "Inverter Reset",
-    complaints: "Complaints",
-    districtAnalytics: "District Analytics",
-    faultHeatmap: "Fault Heatmaps",
-    uptimeComparison: "Uptime Comparison",
-    predictiveMaintenance: "Predictive Maintenance",
-    exportLogs: "Export Logs (CSV)",
-    sendInstructions: "Send Instructions to Operators",
-    systemOverview: "System Overview",
-    revenueVsOpex: "Revenue vs OPEX",
-    sustainabilityScore: "Sustainability Score",
-    communityMetrics: "Community Metrics",
-    userManagement: "User Management",
-    addUser: "Add User",
-    village: "Village",
-    status: "Status",
-    role: "Role",
-    action: "Action",
-    edit: "Edit",
-    delete: "Delete",
-    viewDetails: "View Details",
-    noData: "No data to display.",
-    comingSoon: "Feature coming soon.",
-  },
-  or: {
-    projectName: "ଓଡିଶା ମାଇକ୍ରୋଗ୍ରିଡ୍ ମନିଟର",
-    tagline: "ପ୍ରତ୍ୟେକ ଗାଁ ପାଇଁ ନିର୍ଭରଯୋଗ୍ୟ ସ୍ମାର୍ଟ ଶକ୍ତି",
-    welcomeMessage: "ଓଡିଶା ସାରା ବିକେନ୍ଦ୍ରୀକୃତ ଅକ୍ଷୟ ଶକ୍ତି ପ୍ରକଳ୍ପଗୁଡ଼ିକର ପର୍ଯ୍ୟବେକ୍ଷଣ ଏବଂ ପରିଚାଳନା ପାଇଁ ଏକ ୱେବ୍ ପ୍ଲାଟଫର୍ମ।",
-    login: "ଲଗଇନ୍ କରନ୍ତୁ",
-    logout: "ଲଗଆଉଟ୍",
-    selectRole: "ଆପଣଙ୍କ ଭୂମିକା ବାଛନ୍ତୁ",
-    communityUser: "ସମ୍ପ୍ରଦାୟ ବ୍ୟବହାରକାରୀ (ପରିବାର)",
-    operator: "ଅପରେଟର (ଗ୍ରାମୀଣ ଟେକ୍ନିସିଆନ)",
-    engineer: "ଇଞ୍ଜିନିୟର (ଜିଲ୍ଲା/ରାଜ୍ୟ କର୍ମଚାରୀ)",
-    admin: "ଆଡମିନ (ସରକାରୀ/ଏନଜିଓ/ସଂସ୍ଥା)",
-    username: "ବ୍ୟବହାରକାରୀ ନାମ / ମୋବାଇଲ୍ ନମ୍ବର",
-    password: "ପାସୱାର୍ଡ",
-    otp: "OTP ଦିଅନ୍ତୁ",
-    dashboard: "ଡ୍ୟାସବୋର୍ଡ",
-    reports: "ରିପୋର୍ଟ",
-    alerts: "ସତର୍କ ସୂଚନା",
-    communityFeedback: "ସମ୍ପ୍ରଦାୟ ମତାମତ",
-    settings: "ସେଟିଂସ",
-    language: "ଭାଷା",
-    profile: "ପ୍ରୋଫାଇଲ୍",
-    notifications: "ସୂଚନା",
-    saveChanges: "ପରିବର୍ତ୍ତନ ସେଭ୍ କରନ୍ତୁ",
-    currentBalance: "ବର୍ତ୍ତମାନ ବାଲାନ୍ସ",
-    rechargeHistory: "ରିଚାର୍ଜ ଇତିହାସ",
-    energyUsage: "ଶକ୍ତି ବ୍ୟବହାର (kWh)",
-    daily: "ଦୈନିକ",
-    weekly: "ସାପ୍ତାହିକ",
-    monthly: "ମାସିକ",
-    lowBalanceAlert: "କମ୍ ବାଲାନ୍ସ ସତର୍କ: ଆପଣଙ୍କ ବାଲାନ୍ସ ₹୨୫ ଅଛି। ଦୟାକରି ରିଚାର୍ଜ କରନ୍ତୁ।",
-    unusualUsageAlert: "ଅସାଧାରଣ ବ୍ୟବହାର: ଗତକାଲି ଆପଣଙ୍କ ବ୍ୟବହାର ହାରାହାରିଠାରୁ ୫୦% ଅଧିକ ଥିଲା।",
-    feedbackFormTitle: "ମତାମତ / ଅଭିଯୋଗ",
-    submit: "ଦାଖଲ କରନ୍ତୁ",
-    pvGeneration: "ପିଭି ଉତ୍ପାଦନ",
-    batteryStatus: "ବ୍ୟାଟେରୀ ସ୍ଥିତି",
-    stateOfCharge: "ଚାର୍ଜ ସ୍ଥିତି (SoC)",
-    stateOfHealth: "ସ୍ୱାସ୍ଥ୍ୟ ସ୍ଥିତି (SoH)",
-    loadBreakdown: "ଲୋଡ୍ ବିଭାଜନ",
-    household: "ପରିବାର",
-    livelihood: "ଆଜୀବିକା",
-    systemUptime: "ସିଷ୍ଟମ୍ ଅପଟାଇମ୍",
-    faultLogs: "ତ୍ରୁଟି ଲଗ୍",
-    financialMonitoring: "ଆର୍ଥିକ ପର୍ଯ୍ୟବେକ୍ଷଣ",
-    rechargeRecords: "ପ୍ରିପେଡ୍ ରିଚାର୍ଜ ରେକର୍ଡ",
-    maintenanceTasks: "ରକ୍ଷଣାବେକ୍ଷଣ କାର୍ଯ୍ୟ ଏବଂ ଲଗ୍",
-    panelCleaning: "ପ୍ୟାନେଲ୍ ସଫା କରିବା",
-    batteryChecks: "ବ୍ୟାଟେରୀ ଯାଞ୍ଚ",
-    inverterReset: "ଇନଭର୍ଟର ରିସେଟ୍",
-    complaints: "ଅଭିଯୋଗ",
-    districtAnalytics: "ଜିଲ୍ଲା ବିଶ୍ଳେଷଣ",
-    faultHeatmap: "ତ୍ରୁଟି ହିଟମ୍ୟାପ୍",
-    uptimeComparison: "ଅପଟାଇମ୍ ତୁଳନା",
-    predictiveMaintenance: "ଭବିଷ୍ୟତ ରକ୍ଷଣାବେକ୍ଷଣ",
-    exportLogs: "ଲଗ୍ ରପ୍ତାନି କରନ୍ତୁ (CSV)",
-    sendInstructions: "ଅପରେଟରମାନଙ୍କୁ ନିର୍ଦ୍ଦେଶ ପଠାନ୍ତୁ",
-    systemOverview: "ସିଷ୍ଟମ୍ ସମୀକ୍ଷା",
-    revenueVsOpex: "ଆୟ ବନାମ OPEX",
-    sustainabilityScore: "ସ୍ଥାୟୀତ୍ୱ ସ୍କୋର",
-    communityMetrics: "ସମ୍ପ୍ରଦାୟ ମେଟ୍ରିକ୍ସ",
-    userManagement: "ବ୍ୟବହାରକାରୀ ପରିଚାଳନା",
-    addUser: "ବ୍ୟବହାରକାରୀ ଯୋଗ କରନ୍ତୁ",
-    village: "ଗାଁ",
-    status: "ସ୍ଥିତି",
-    role: "ଭୂମିକା",
-    action: "କାର୍ଯ୍ୟ",
-    edit: "ସମ୍ପାଦନ",
-    delete: "ବିଲୋପ",
-    viewDetails: "ବିବରଣୀ ଦେଖନ୍ତୁ",
-    noData: "ପ୍ରଦର୍ଶନ କରିବାକୁ କୌଣସି ଡାଟା ନାହିଁ |",
-    comingSoon: "ଏହି ସୁବିଧା ଶୀଘ୍ର ଆସୁଛି |",
-  }
-};
+    <script type="text/babel">
+      const { useState, useEffect, useRef } = React;
 
-const mockData = {
-    kpis: { peoplePowered: "2.1M", uptime: "98.5%", villages: 1250 },
-    user: { name: "Aarav Gupta", avatar: `https://i.pravatar.cc/150?u=aarav` },
-    community: { balance: 150.75, rechargeHistory: [{ id: 1, date: '2023-10-20', amount: 100 }, { id: 2, date: '2023-10-10', amount: 50 }, { id: 3, date: '2023-09-28', amount: 100 },], usage: { daily: [1.2, 1.5, 1.3, 1.6, 1.4, 1.8, 1.5], weekly: [10.5, 11.2, 9.8, 12.1], } },
-    operator: { pvGeneration: 25.5, battery: { soc: 85, soh: 95, cycles: 450, temp: 28 }, load: { household: 60, livelihood: 40 }, uptime: 99.2, faults: [{ id: 1, time: '2023-10-21 08:15', code: 'E501', desc: 'Inverter Overload' }, { id: 2, time: '2023-10-20 14:30', code: 'W203', desc: 'Grid Fluctuation' },], complaints: [{ id: 101, user: 'Household #12', issue: 'No power since morning', status: 'Pending' }, { id: 102, user: 'Household #25', issue: 'Bill discrepancy', status: 'Resolved' },] },
-    engineer: { villages: [{ id: 'V001', name: 'Kendupali', uptime: 99.2, faults: 5, status: 'green' }, { id: 'V002', name: 'Badmal', uptime: 95.1, faults: 12, status: 'orange' }, { id: 'V003', name: 'Nuagaon', uptime: 99.8, faults: 2, status: 'green' }, { id: 'V004', name: 'Sargipali', uptime: 88.5, faults: 25, status: 'red' },], predictiveAlerts: [{ id: 1, village: 'Badmal', alert: 'Battery SoH at 82%, replacement predicted in 3 months.' }, { id: 2, village: 'Sargipali', alert: 'High frequency of inverter faults suggests inspection needed.' },] },
-    admin: { users: [{ id: 1, name: 'Ashok Pradhan', village: 'Kendupali', role: 'Operator' }, { id: 2, name: 'Binita Sahoo', village: 'Badmal', role: 'Operator' }, { id: 3, name: 'Chirag Das', village: 'District A', role: 'Engineer' }, { id: 4, name: 'Dipti Nayak', village: 'Household #12', role: 'Community User' },] }
-};
-
-
-// --- UI PRIMITIVES & HELPER COMPONENTS ---
-
-const Card = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6 ${className}`}>
-    {children}
-  </div>
-);
-
-const ChartComponent = ({ type, data, options, chartId }) => {
-    const chartRef = useRef(null);
-    const canvasRef = useRef(null);
-
-    useEffect(() => {
-        if (!window.Chart) { console.error("Chart.js not loaded"); return; }
-        if (chartRef.current) { chartRef.current.destroy(); }
-        const ctx = canvasRef.current.getContext('2d');
-        chartRef.current = new window.Chart(ctx, { type, data, options });
-        return () => { if (chartRef.current) { chartRef.current.destroy(); } };
-    }, [type, data, options]);
-
-    return <canvas ref={canvasRef} id={chartId}></canvas>;
-};
-
-const Icon = ({ name, className = "h-6 w-6" }) => {
-    const icons = {
-        'dashboard': <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />,
-        'reports': <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h4.5M15 3.75l3 3m0 0l-3 3m3-3H9" />,
-        'alerts': <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />,
-        'feedback': <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m3.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M12 21a8.967 8.967 0 01-2.312-6.022A8.967 8.967 0 0112.001 3a8.967 8.967 0 012.312 6.022A8.967 8.967 0 0112 21z" />,
-        'settings': <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />,
-        'logout': <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />,
-        'sun': <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />,
-        'battery': <path strokeLinecap="round" strokeLinejoin="round" d="M21 10.5h.375c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125H21M4.5 10.5H18V15H4.5v-4.5zM3.75 18h15A2.25 2.25 0 0021 15.75v-6.375A2.25 2.25 0 0018.75 7.125h-15A2.25 2.25 0 001.5 9.375v6.375A2.25 2.25 0 003.75 18z" />,
-        'up': <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.517l2.74-1.22m0 0l-3.75-.609m3.75.609V3.375" />,
-        'menu': <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />,
-    };
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-            {icons[name]}
-        </svg>
-    );
-};
-
-// --- PAGE COMPONENTS (Landing, Login) ---
-
-const LandingPage = ({ onLoginClick, t }) => (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-center p-4">
-    <div className="max-w-4xl w-full">
-      <h1 className="text-4xl md:text-6xl font-bold text-sky-600">{t.projectName}</h1>
-      <p className="text-xl md:text-2xl mt-4 text-slate-600">{t.tagline}</p>
-      <p className="mt-8 text-lg text-slate-700 max-w-2xl mx-auto">{t.welcomeMessage}</p>
-      
-      <div className="mt-12">
-        <button onClick={onLoginClick} className="bg-sky-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-sky-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-          {t.login}
-        </button>
-      </div>
-
-      <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
-        <Card className="bg-sky-50 border-sky-200">
-          <h3 className="text-4xl font-bold text-sky-700">{mockData.kpis.peoplePowered}</h3>
-          <p className="mt-2 text-slate-600">People Powered</p>
-        </Card>
-        <Card className="bg-emerald-50 border-emerald-200">
-          <h3 className="text-4xl font-bold text-emerald-700">{mockData.kpis.uptime}</h3>
-          <p className="mt-2 text-slate-600">System Uptime</p>
-        </Card>
-        <Card className="bg-indigo-50 border-indigo-200">
-          <h3 className="text-4xl font-bold text-indigo-700">{mockData.kpis.villages}</h3>
-          <p className="mt-2 text-slate-600">Villages Covered</p>
-        </Card>
-      </div>
-    </div>
-  </div>
-);
-
-const LoginPage = ({ onLogin, t }) => {
-  const [role, setRole] = useState('community');
-  const handleLogin = (e) => { e.preventDefault(); onLogin(role); };
-  
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-      <Card className="w-full max-w-md border-0 shadow-xl">
-        <h2 className="text-2xl font-bold text-center text-slate-800">{t.projectName}</h2>
-        <form onSubmit={handleLogin} className="mt-8 space-y-6">
-          <div>
-            <label htmlFor="role-select" className="block text-sm font-medium text-slate-700">{t.selectRole}</label>
-            <select id="role-select" value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500">
-              <option value="community">{t.communityUser}</option>
-              <option value="operator">{t.operator}</option>
-              <option value="engineer">{t.engineer}</option>
-              <option value="admin">{t.admin}</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700">{t.username}</label>
-            <input type="text" required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700">{t.password}</label>
-            <input type="password" required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-          </div>
-          
-          <button type="submit" className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors">
-            {t.login}
-          </button>
-        </form>
-      </Card>
-    </div>
-  );
-};
-
-// --- DASHBOARD PAGES (Placeholders & Settings) ---
-const PlaceholderPage = ({ title, t }) => (
-    <Card>
-        <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-        <p className="mt-4 text-slate-500">{t.comingSoon}</p>
-    </Card>
-);
-
-const SettingsPage = ({ t }) => (
-    <div className="space-y-6">
-        <Card>
-            <h2 className="text-xl font-bold text-slate-800">{t.profile}</h2>
-            <form className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">Full Name</label>
-                    <input type="text" defaultValue={mockData.user.name} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">Email Address</label>
-                    <input type="email" defaultValue="aarav.g@example.com" className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
-                </div>
-                <div className="md:col-span-2">
-                    <button type="submit" className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700">{t.saveChanges}</button>
-                </div>
-            </form>
-        </Card>
-        <Card>
-            <h2 className="text-xl font-bold text-slate-800">{t.notifications}</h2>
-            <div className="mt-4 space-y-4">
-                <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Low balance alerts</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-sky-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
-                    </label>
-                </div>
-                <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Unusual usage alerts</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-sky-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
-                    </label>
-                </div>
-            </div>
-        </Card>
-    </div>
-);
-
-
-// --- DASHBOARD COMPONENTS ---
-
-const CommunityDashboard = ({ t, lang }) => {
-    const [usagePeriod, setUsagePeriod] = useState('daily');
-    const data = mockData.community;
-    const usageChartData = {
-        labels: usagePeriod === 'daily' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['W1', 'W2', 'W3', 'W4'],
-        datasets: [{ label: t.energyUsage, data: data.usage[usagePeriod], backgroundColor: 'rgba(14, 165, 233, 0.2)', borderColor: 'rgba(14, 165, 233, 1)', borderWidth: 2, fill: true, tension: 0.4, pointBackgroundColor: 'rgba(14, 165, 233, 1)', pointRadius: 4 }]
-    };
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-                <Card>
-                    <div className="flex justify-between items-center">
-                        <h3 className="font-bold text-lg text-slate-700">{t.energyUsage}</h3>
-                        <div className="flex space-x-1 p-1 bg-slate-100 rounded-lg">
-                            <button onClick={() => setUsagePeriod('daily')} className={`px-3 py-1 text-sm rounded-md transition-colors ${usagePeriod === 'daily' ? 'bg-white shadow-sm text-sky-600 font-semibold' : 'text-slate-500'}`}>{t.daily}</button>
-                            <button onClick={() => setUsagePeriod('weekly')} className={`px-3 py-1 text-sm rounded-md transition-colors ${usagePeriod === 'weekly' ? 'bg-white shadow-sm text-sky-600 font-semibold' : 'text-slate-500'}`}>{t.weekly}</button>
-                        </div>
-                    </div>
-                    <div className="mt-4 h-64"><ChartComponent type="line" data={usageChartData} options={{ responsive: true, maintainAspectRatio: false }} chartId="usageChart" /></div>
-                </Card>
-                 <Card>
-                    <h3 className="font-bold text-lg text-slate-700">{t.feedbackFormTitle}</h3>
-                    <form className="mt-4 space-y-4">
-                        <textarea rows="4" placeholder={lang === 'en' ? 'Type your message here...' : 'ଆପଣଙ୍କ ମତାମତ ଏଠାରେ ଟାଇପ୍ କରନ୍ତୁ...'} className="w-full p-2 border border-slate-300 rounded-md focus:ring-sky-500 focus:border-sky-500"></textarea>
-                        <button type="submit" className="bg-sky-600 text-white px-4 py-2 rounded-md hover:bg-sky-700 transition-colors">{t.submit}</button>
-                    </form>
-                </Card>
-            </div>
-            <div className="space-y-6">
-                <Card className="text-center bg-sky-50 border-sky-200">
-                     <h3 className="font-semibold text-slate-600">{t.currentBalance}</h3>
-                     <p className="text-4xl font-bold text-sky-700 mt-2">₹{data.balance.toFixed(2)}</p>
-                </Card>
-                <Card>
-                     <h3 className="font-bold text-lg text-slate-700">{t.rechargeHistory}</h3>
-                     <ul className="mt-2 space-y-3">
-                         {data.rechargeHistory.map(item => ( <li key={item.id} className="flex justify-between text-sm items-center"><span className="text-slate-500">{item.date}</span> <span className="font-semibold text-slate-700">₹{item.amount}</span></li> ))}
-                     </ul>
-                </Card>
-                 <Card className="bg-amber-50 border-l-4 border-amber-400">
-                     <h3 className="font-bold text-amber-800">{t.alerts}</h3>
-                     <p className="text-sm mt-2 text-amber-700">{t.lowBalanceAlert}</p>
-                     <p className="text-sm mt-2 text-amber-700">{t.unusualUsageAlert}</p>
-                </Card>
-            </div>
-        </div>
-    );
-};
-
-const OperatorDashboard = ({ t }) => {
-    const data = mockData.operator;
-    const loadChartData = { labels: [t.household, t.livelihood], datasets: [{ data: [data.load.household, data.load.livelihood], backgroundColor: ['#0ea5e9', '#10b981'], borderWidth: 0 }] };
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-                <h3 className="font-bold text-lg text-slate-700">Technical Monitoring</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-center">
-                    <div className="p-2 rounded-lg bg-slate-50"> <Icon name="sun" className="mx-auto text-amber-500 h-8 w-8" /> <p className="font-bold text-xl mt-1">{data.pvGeneration} <span className="text-sm font-normal">kWh</span></p> <p className="text-xs text-slate-500">{t.pvGeneration}</p> </div>
-                    <div className="p-2 rounded-lg bg-slate-50"> <Icon name="battery" className="mx-auto text-emerald-500 h-8 w-8" /> <p className="font-bold text-xl mt-1">{data.battery.soc}%</p> <p className="text-xs text-slate-500">{t.stateOfCharge}</p> </div>
-                    <div className="p-2 rounded-lg bg-slate-50"> <div className="w-16 h-16 mx-auto"><ChartComponent type="doughnut" data={loadChartData} options={{ responsive: true, plugins: { legend: { display: false } } }} chartId="loadChart" /></div> <p className="text-xs text-slate-500 -mt-2">{t.loadBreakdown}</p> </div>
-                    <div className="p-2 rounded-lg bg-slate-50"> <Icon name="up" className="mx-auto text-sky-500 h-8 w-8" /> <p className="font-bold text-xl mt-1">{data.uptime}%</p> <p className="text-xs text-slate-500">{t.systemUptime}</p> </div>
-                </div>
-            </Card>
-            <Card>
-                <h3 className="font-bold text-lg text-slate-700">{t.batteryStatus}</h3>
-                <ul className="text-sm space-y-2 mt-2">
-                    <li className="flex justify-between"><span>{t.stateOfHealth}:</span> <span className="font-semibold">{data.battery.soh}%</span></li>
-                    <li className="flex justify-between"><span>Cycles:</span> <span className="font-semibold">{data.battery.cycles}</span></li>
-                    <li className="flex justify-between"><span>Temperature:</span> <span className="font-semibold">{data.battery.temp}°C</span></li>
-                </ul>
-            </Card>
-            <Card>
-                <h3 className="font-bold text-lg text-slate-700">{t.faultLogs}</h3>
-                <ul className="mt-2 space-y-2 text-sm"> {data.faults.map(f => <li key={f.id}><span className="font-mono bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs mr-2">{f.code}</span> {f.desc} <span className="text-slate-400 block text-xs">{f.time}</span></li>)} </ul>
-            </Card>
-            <Card>
-                <h3 className="font-bold text-lg text-slate-700">{t.maintenanceTasks}</h3>
-                 <div className="mt-2 space-y-2">
-                    <button className="w-full text-left p-2 bg-slate-100 hover:bg-slate-200 rounded transition-colors">{t.panelCleaning}</button>
-                    <button className="w-full text-left p-2 bg-slate-100 hover:bg-slate-200 rounded transition-colors">{t.batteryChecks}</button>
-                    <button className="w-full text-left p-2 bg-slate-100 hover:bg-slate-200 rounded transition-colors">{t.inverterReset}</button>
-                 </div>
-            </Card>
-            <Card>
-                <h3 className="font-bold text-lg text-slate-700">{t.complaints}</h3>
-                <ul className="mt-2 space-y-2 text-sm"> {data.complaints.map(c => ( <li key={c.id} className="p-2 border border-slate-200 rounded-md"> <p className="font-semibold text-slate-800">{c.user}: <span className="font-normal text-slate-600">{c.issue}</span></p> <span className={`px-2 py-0.5 text-xs rounded-full ${c.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>{c.status}</span> </li> ))} </ul>
-            </Card>
-        </div>
-    );
-};
-
-const EngineerDashboard = ({ t }) => {
-    const data = mockData.engineer;
-    const uptimeData = { labels: data.villages.map(v => v.name), datasets: [{ label: 'Uptime %', data: data.villages.map(v => v.uptime), backgroundColor: data.villages.map(v => v.status === 'red' ? '#f43f5e' : v.status === 'orange' ? '#f97316' : '#10b981'), borderRadius: 4 }] };
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-3 space-y-6">
-                <Card>
-                     <h3 className="font-bold text-lg text-slate-700">{t.uptimeComparison}</h3>
-                     <div className="mt-4 h-80"><ChartComponent type="bar" data={uptimeData} options={{ indexAxis: 'y', responsive: true, maintainAspectRatio: false }} chartId="uptimeChart" /></div>
-                </Card>
-                 <Card>
-                    <h3 className="font-bold text-lg text-slate-700">{t.faultHeatmap}</h3>
-                    <div className="mt-2 p-4 bg-slate-100 rounded text-center text-slate-500"> [Fault Heatmap Visualization Placeholder] </div>
-                </Card>
-            </div>
-            <div className="lg:col-span-2 space-y-6">
-                <Card>
-                    <div className="flex justify-between items-center">
-                        <h3 className="font-bold text-lg text-slate-700">{t.districtAnalytics}</h3>
-                        <button className="text-sm bg-sky-600 text-white px-3 py-1 rounded hover:bg-sky-700 transition-colors">{t.exportLogs}</button>
-                    </div>
-                     <table className="w-full mt-4 text-sm text-left">
-                        <thead className="text-xs text-slate-500 uppercase bg-slate-50">
-                            <tr>
-                                <th className="py-3 px-4">{t.village}</th><th className="py-3 px-4">Uptime</th><th className="py-3 px-4">Faults</th><th className="py-3 px-4">{t.status}</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                            {data.villages.map(v => (
-                                <tr key={v.id} className="hover:bg-slate-50">
-                                    <td className="py-3 px-4 font-medium text-slate-800">{v.name}</td>
-                                    <td className="py-3 px-4">{v.uptime}%</td>
-                                    <td className="py-3 px-4">{v.faults}</td>
-                                    <td className="py-3 px-4"><span className={`h-3 w-3 inline-block rounded-full ${v.status === 'red' ? 'bg-rose-500' : v.status === 'orange' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </Card>
-                <Card>
-                     <h3 className="font-bold text-lg text-slate-700">{t.predictiveMaintenance}</h3>
-                     <ul className="mt-2 space-y-2 text-sm"> {data.predictiveAlerts.map(a => <li key={a.id} className="p-2 bg-amber-50 border-l-2 border-amber-500 rounded">{a.alert}</li>)} </ul>
-                </Card>
-            </div>
-        </div>
-    );
-};
-
-const AdminDashboard = ({ t }) => {
-    const data = mockData.admin;
-    const MapComponent = () => {
-        const mapRef = useRef(null);
-        useEffect(() => {
-            if (!window.L || mapRef.current.id !== 'map-container') return;
-            const mapContainer = document.getElementById('map');
-            if(mapContainer && mapContainer._leaflet_id) { mapContainer._leaflet_id = null; }
-
-            const map = window.L.map('map').setView([20.9517, 85.0985], 7);
-            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-            const villages = [{ name: 'Kendupali', coords: [21.2, 84.0], status: 'green'}, { name: 'Badmal', coords: [20.8, 83.5], status: 'orange'}, { name: 'Sargipali', coords: [22.0, 84.2], status: 'red'}, { name: 'Nuagaon', coords: [20.5, 85.5], status: 'green'}];
-            villages.forEach(v => {
-                const color = v.status === 'green' ? '#10b981' : v.status === 'orange' ? '#f97316' : '#f43f5e';
-                const icon = window.L.divIcon({ className: 'custom-div-icon', html: `<div style="background-color:${color};" class="marker-pin"></div>`, iconSize: [30, 42], iconAnchor: [15, 42] });
-                window.L.marker(v.coords, {icon}).addTo(map).bindPopup(v.name);
-            });
-            return () => map.remove();
-        }, []);
-        return <div id="map" ref={mapRef} style={{ height: '400px' }} className="rounded-lg bg-slate-200"></div>;
-    };
-    
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-3">
-                <h3 className="font-bold text-lg text-slate-700">{t.systemOverview}</h3>
-                <div className="mt-2" id="map-container"><MapComponent /></div>
-            </Card>
-            <Card>
-                <h3 className="font-bold text-lg text-slate-700">{t.financialMonitoring}</h3>
-                <div className="mt-4 space-y-2">
-                    <div className="p-2 bg-emerald-50 rounded"> <p className="text-sm text-emerald-700">{t.revenueVsOpex}</p> <p className="font-bold text-lg text-emerald-800">+12% YTD</p> </div>
-                    <div className="p-2 bg-sky-50 rounded"> <p className="text-sm text-sky-700">{t.sustainabilityScore}</p> <p className="font-bold text-lg text-sky-800">8.2 / 10</p> </div>
-                </div>
-            </Card>
-            <Card className="lg:col-span-2">
-                <div className="flex justify-between items-center">
-                    <h3 className="font-bold text-lg text-slate-700">{t.userManagement}</h3>
-                    <button className="text-sm bg-sky-600 text-white px-3 py-1 rounded hover:bg-sky-700 transition-colors">{t.addUser}</button>
-                </div>
-                <table className="w-full mt-4 text-sm text-left">
-                    <thead className="text-xs text-slate-500 uppercase bg-slate-50"><tr><th className="py-3 px-4">Name</th><th className="py-3 px-4">{t.village} / Area</th><th className="py-3 px-4">{t.role}</th><th className="py-3 px-4">{t.action}</th></tr></thead>
-                    <tbody className="divide-y divide-slate-200">
-                        {data.users.map(u => ( <tr key={u.id} className="hover:bg-slate-50"><td className="py-3 px-4 font-medium text-slate-800">{u.name}</td><td className="py-3 px-4">{u.village}</td><td className="py-3 px-4">{u.role}</td><td className="py-3 px-4 space-x-2"><button className="text-sky-600 hover:underline">{t.edit}</button><button className="text-rose-600 hover:underline">{t.delete}</button></td></tr> ))}
-                    </tbody>
-                </table>
-            </Card>
-        </div>
-    );
-};
-
-
-// --- MAIN DASHBOARD LAYOUT ---
-
-const Dashboard = ({ userRole, onLogout, t, setLang, lang }) => {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [activeView, setActiveView] = useState('dashboard');
-    
-    const roleName = { community: t.communityUser, operator: t.operator, engineer: t.engineer, admin: t.admin }[userRole];
-    const pageTitle = { dashboard: t.dashboard, reports: t.reports, alerts: t.alerts, feedback: t.communityFeedback, settings: t.settings }[activeView];
-    
-    const navItems = [
-      { id: 'dashboard', name: t.dashboard, icon: 'dashboard' },
-      { id: 'reports', name: t.reports, icon: 'reports' },
-      { id: 'alerts', name: t.alerts, icon: 'alerts' },
-      { id: 'feedback', name: t.communityFeedback, icon: 'feedback' },
-      { id: 'settings', name: t.settings, icon: 'settings' },
-    ];
-
-    const handleNavClick = (viewId) => {
-      setActiveView(viewId);
-      if (window.innerWidth < 768) setIsSidebarOpen(false);
-    }
-    
-    const MainContent = () => {
-        switch (activeView) {
-            case 'dashboard': return { community: <CommunityDashboard t={t} lang={lang}/>, operator: <OperatorDashboard t={t}/>, engineer: <EngineerDashboard t={t}/>, admin: <AdminDashboard t={t}/> }[userRole];
-            case 'reports': return <PlaceholderPage title={t.reports} t={t} />;
-            case 'alerts': return <PlaceholderPage title={t.alerts} t={t} />;
-            case 'feedback': return <PlaceholderPage title={t.communityFeedback} t={t} />;
-            case 'settings': return <SettingsPage t={t} />;
-            default: return <CommunityDashboard t={t} lang={lang} />;
+      // --- MOCK DATA & TRANSLATIONS ---
+      const translations = {
+        en: {
+          projectName: "Odisha Microgrid Monitor",
+          tagline: "Reliable Smart Energy for Every Village",
+          welcomeMessage: "A web platform for monitoring and managing decentralized renewable energy projects across Odisha.",
+          login: "Login",
+          logout: "Logout",
+          selectRole: "Select Your Role",
+          communityUser: "Community User (Household)",
+          operator: "Operator (Village Technician)",
+          engineer: "Engineer (District/State Staff)",
+          admin: "Admin (Govt/NGO/Org)",
+          username: "Username / Mobile Number",
+          password: "Password",
+          otp: "Enter OTP",
+          dashboard: "Dashboard",
+          reports: "Reports",
+          alerts: "Alerts",
+          communityFeedback: "Community Feedback",
+          settings: "Settings",
+          language: "Language",
+          profile: "Profile",
+          notifications: "Notifications",
+          saveChanges: "Save Changes",
+          currentBalance: "Current Balance",
+          rechargeHistory: "Recharge History",
+          energyUsage: "Energy Usage (kWh)",
+          daily: "Daily",
+          weekly: "Weekly",
+          monthly: "Monthly",
+          lowBalanceAlert: "Low Balance Alert: Your balance is ₹25. Please recharge.",
+          unusualUsageAlert: "Unusual Usage: Your consumption was 50% higher than average yesterday.",
+          feedbackFormTitle: "Feedback / Complaint",
+          submit: "Submit",
+          pvGeneration: "PV Generation",
+          batteryStatus: "Battery Status",
+          stateOfCharge: "State of Charge (SoC)",
+          stateOfHealth: "State of Health (SoH)",
+          loadBreakdown: "Load Breakdown",
+          household: "Household",
+          livelihood: "Livelihood",
+          systemUptime: "System Uptime",
+          faultLogs: "Fault Logs",
+          financialMonitoring: "Financial Monitoring",
+          rechargeRecords: "Prepaid Recharge Records",
+          maintenanceTasks: "Maintenance Tasks & Logs",
+          panelCleaning: "Panel Cleaning",
+          batteryChecks: "Battery Checks",
+          inverterReset: "Inverter Reset",
+          complaints: "Complaints",
+          districtAnalytics: "District Analytics",
+          faultHeatmap: "Fault Heatmaps",
+          uptimeComparison: "Uptime Comparison",
+          predictiveMaintenance: "Predictive Maintenance",
+          exportLogs: "Export Logs (CSV)",
+          sendInstructions: "Send Instructions to Operators",
+          systemOverview: "System Overview",
+          revenueVsOpex: "Revenue vs OPEX",
+          sustainabilityScore: "Sustainability Score",
+          communityMetrics: "Community Metrics",
+          userManagement: "User Management",
+          addUser: "Add User",
+          village: "Village",
+          status: "Status",
+          role: "Role",
+          action: "Action",
+          edit: "Edit",
+          delete: "Delete",
+          viewDetails: "View Details",
+          noData: "No data to display.",
+          comingSoon: "Feature coming soon.",
+        },
+        or: {
+          projectName: "ଓଡିଶା ମାଇକ୍ରୋଗ୍ରିଡ୍ ମନିଟର",
+          tagline: "ପ୍ରତ୍ୟେକ ଗାଁ ପାଇଁ ନିର୍ଭରଯୋଗ୍ୟ ସ୍ମାର୍ଟ ଶକ୍ତି",
+          welcomeMessage: "ଓଡିଶା ସାରା ବିକେନ୍ଦ୍ରୀକୃତ ଅକ୍ଷୟ ଶକ୍ତି ପ୍ରକଳ୍ପଗୁଡ଼ିକର ପର୍ଯ୍ୟବେକ୍ଷଣ ଏବଂ ପରିଚାଳନା ପାଇଁ ଏକ ୱେବ୍ ପ୍ଲାଟଫର୍ମ।",
+          login: "ଲଗଇନ୍ କରନ୍ତୁ",
+          logout: "ଲଗଆଉଟ୍",
+          selectRole: "ଆପଣଙ୍କ ଭୂମିକା ବାଛନ୍ତୁ",
+          communityUser: "ସମ୍ପ୍ରଦାୟ ବ୍ୟବହାରକାରୀ (ପରିବାର)",
+          operator: "ଅପରେଟର (ଗ୍ରାମୀଣ ଟେକ୍ନିସିଆନ)",
+          engineer: "ଇଞ୍ଜିନିୟର (ଜିଲ୍ଲା/ରାଜ୍ୟ କର୍ମଚାରୀ)",
+          admin: "ଆଡମିନ (ସରକାରୀ/ଏନଜିଓ/ସଂସ୍ଥା)",
+          username: "ବ୍ୟବହାରକାରୀ ନାମ / ମୋବାଇଲ୍ ନମ୍ବର",
+          password: "ପାସୱାର୍ଡ",
+          otp: "OTP ଦିଅନ୍ତୁ",
+          dashboard: "ଡ୍ୟାସବୋର୍ଡ",
+          reports: "ରିପୋର୍ଟ",
+          alerts: "ସତର୍କ ସୂଚନା",
+          communityFeedback: "ସମ୍ପ୍ରଦାୟ ମତାମତ",
+          settings: "ସେଟିଂସ",
+          language: "ଭାଷା",
+          profile: "ପ୍ରୋଫାଇଲ୍",
+          notifications: "ସୂଚନା",
+          saveChanges: "ପରିବର୍ତ୍ତନ ସେଭ୍ କରନ୍ତୁ",
+          currentBalance: "ବର୍ତ୍ତମାନ ବାଲାନ୍ସ",
+          rechargeHistory: "ରିଚାର୍ଜ ଇତିହାସ",
+          energyUsage: "ଶକ୍ତି ବ୍ୟବହାର (kWh)",
+          daily: "ଦୈନିକ",
+          weekly: "ସାପ୍ତାହିକ",
+          monthly: "ମାସିକ",
+          lowBalanceAlert: "କମ୍ ବାଲାନ୍ସ ସତର୍କ: ଆପଣଙ୍କ ବାଲାନ୍ସ ₹୨୫ ଅଛି। ଦୟାକରି ରିଚାର୍ଜ କରନ୍ତୁ।",
+          unusualUsageAlert: "ଅସାଧାରଣ ବ୍ୟବହାର: ଗତକାଲି ଆପଣଙ୍କ ବ୍ୟବହାର ହାରାହାରିଠାରୁ ୫୦% ଅଧିକ ଥିଲା।",
+          feedbackFormTitle: "ମତାମତ / ଅଭିଯୋଗ",
+          submit: "ଦାଖଲ କରନ୍ତୁ",
+          pvGeneration: "ପିଭି ଉତ୍ପାଦନ",
+          batteryStatus: "ବ୍ୟାଟେରୀ ସ୍ଥିତି",
+          stateOfCharge: "ଚାର୍ଜ ସ୍ଥିତି (SoC)",
+          stateOfHealth: "ସ୍ୱାସ୍ଥ୍ୟ ସ୍ଥିତି (SoH)",
+          loadBreakdown: "ଲୋଡ୍ ବିଭାଜନ",
+          household: "ପରିବାର",
+          livelihood: "ଆଜୀବିକା",
+          systemUptime: "ସିଷ୍ଟମ୍ ଅପଟାଇମ୍",
+          faultLogs: "ତ୍ରୁଟି ଲଗ୍",
+          financialMonitoring: "ଆର୍ଥିକ ପର୍ଯ୍ୟବେକ୍ଷଣ",
+          rechargeRecords: "ପ୍ରିପେଡ୍ ରିଚାର୍ଜ ରେକର୍ଡ",
+          maintenanceTasks: "ରକ୍ଷଣାବେକ୍ଷଣ କାର୍ଯ୍ୟ ଏବଂ ଲଗ୍",
+          panelCleaning: "ପ୍ୟାନେଲ୍ ସଫା କରିବା",
+          batteryChecks: "ବ୍ୟାଟେରୀ ଯାଞ୍ଚ",
+          inverterReset: "ଇନଭର୍ଟର ରିସେଟ୍",
+          complaints: "ଅଭିଯୋଗ",
+          districtAnalytics: "ଜିଲ୍ଲା ବିଶ୍ଳେଷଣ",
+          faultHeatmap: "ତ୍ରୁଟି ହିଟମ୍ୟାପ୍",
+          uptimeComparison: "ଅପଟାଇମ୍ ତୁଳନା",
+          predictiveMaintenance: "ଭବିଷ୍ୟତ ରକ୍ଷଣାବେକ୍ଷଣ",
+          exportLogs: "ଲଗ୍ ରପ୍ତାନି କରନ୍ତୁ (CSV)",
+          sendInstructions: "ଅପରେଟରମାନଙ୍କୁ ନିର୍ଦ୍ଦେଶ ପଠାନ୍ତୁ",
+          systemOverview: "ସିଷ୍ଟମ୍ ସମୀକ୍ଷା",
+          revenueVsOpex: "ଆୟ ବନାମ OPEX",
+          sustainabilityScore: "ସ୍ଥାୟୀତ୍ୱ ସ୍କୋର",
+          communityMetrics: "ସମ୍ପ୍ରଦାୟ ମେଟ୍ରିକ୍ସ",
+          userManagement: "ବ୍ୟବହାରକାରୀ ପରିଚାଳନା",
+          addUser: "ବ୍ୟବହାରକାରୀ ଯୋଗ କରନ୍ତୁ",
+          village: "ଗାଁ",
+          status: "ସ୍ଥିତି",
+          role: "ଭୂମିକା",
+          action: "କାର୍ଯ୍ୟ",
+          edit: "ସମ୍ପାଦନ",
+          delete: "ବିଲୋପ",
+          viewDetails: "ବିବରଣୀ ଦେଖନ୍ତୁ",
+          noData: "ପ୍ରଦର୍ଶନ କରିବାକୁ କୌଣସି ଡାଟା ନାହିଁ |",
+          comingSoon: "ଏହି ସୁବିଧା ଶୀଘ୍ର ଆସୁଛି |",
         }
-    };
+      };
 
-    const Sidebar = () => (
-        <aside className={`fixed inset-y-0 left-0 bg-slate-800 text-slate-200 w-64 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30 flex flex-col`}>
-            <div className="p-4 border-b border-slate-700">
-                <h2 className="text-xl font-bold text-white">{t.projectName}</h2>
-            </div>
-            <div className="p-4 border-b border-slate-700 flex items-center space-x-3">
-                <img src={mockData.user.avatar} alt="User Avatar" className="h-10 w-10 rounded-full" />
-                <div>
-                    <p className="font-semibold text-white">{mockData.user.name}</p>
-                    <p className="text-xs text-sky-300">{roleName}</p>
-                </div>
-            </div>
-            <nav className="mt-4 flex-1">
-                {navItems.map(item => (
-                    <a key={item.id} href="#" onClick={() => handleNavClick(item.id)} className={`flex items-center px-4 py-3 m-2 rounded-lg transition-colors ${activeView === item.id ? 'bg-sky-600 text-white' : 'hover:bg-slate-700'}`}>
-                        <Icon name={item.icon} className="h-5 w-5"/>
-                        <span className="ml-4 text-sm font-medium">{item.name}</span>
-                    </a>
-                ))}
-            </nav>
-            <div className="p-2">
-                <a href="#" onClick={onLogout} className="flex items-center px-4 py-3 m-2 rounded-lg hover:bg-slate-700 transition-colors">
-                    <Icon name='logout' className="h-5 w-5"/>
-                    <span className="ml-4 text-sm font-medium">{t.logout}</span>
-                </a>
-            </div>
-        </aside>
-    );
+      const mockData = {
+          kpis: { peoplePowered: "2.1M", uptime: "98.5%", villages: 1250 },
+          user: { name: "Aarav Gupta", avatar: `https://i.pravatar.cc/150?u=aarav` },
+          community: { balance: 150.75, rechargeHistory: [{ id: 1, date: '2023-10-20', amount: 100 }, { id: 2, date: '2023-10-10', amount: 50 }, { id: 3, date: '2023-09-28', amount: 100 },], usage: { daily: [1.2, 1.5, 1.3, 1.6, 1.4, 1.8, 1.5], weekly: [10.5, 11.2, 9.8, 12.1], } },
+          operator: { pvGeneration: 25.5, battery: { soc: 85, soh: 95, cycles: 450, temp: 28 }, load: { household: 60, livelihood: 40 }, uptime: 99.2, faults: [{ id: 1, time: '2023-10-21 08:15', code: 'E501', desc: 'Inverter Overload' }, { id: 2, time: '2023-10-20 14:30', code: 'W203', desc: 'Grid Fluctuation' },], complaints: [{ id: 101, user: 'Household #12', issue: 'No power since morning', status: 'Pending' }, { id: 102, user: 'Household #25', issue: 'Bill discrepancy', status: 'Resolved' },] },
+          engineer: { villages: [{ id: 'V001', name: 'Kendupali', uptime: 99.2, faults: 5, status: 'green' }, { id: 'V002', name: 'Badmal', uptime: 95.1, faults: 12, status: 'orange' }, { id: 'V003', name: 'Nuagaon', uptime: 99.8, faults: 2, status: 'green' }, { id: 'V004', name: 'Sargipali', uptime: 88.5, faults: 25, status: 'red' },], predictiveAlerts: [{ id: 1, village: 'Badmal', alert: 'Battery SoH at 82%, replacement predicted in 3 months.' }, { id: 2, village: 'Sargipali', alert: 'High frequency of inverter faults suggests inspection needed.' },] },
+          admin: { users: [{ id: 1, name: 'Ashok Pradhan', village: 'Kendupali', role: 'Operator' }, { id: 2, name: 'Binita Sahoo', village: 'Badmal', role: 'Operator' }, { id: 3, name: 'Chirag Das', village: 'District A', role: 'Engineer' }, { id: 4, name: 'Dipti Nayak', village: 'Household #12', role: 'Community User' },] }
+      };
 
-    return (
-        <div className="flex h-screen bg-slate-100 font-sans">
-            <Sidebar />
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <header className="flex justify-between items-center p-4 bg-white border-b border-slate-200">
-                    <div className="flex items-center">
-                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-slate-500 md:hidden mr-4"> <Icon name="menu" /> </button>
-                        <h1 className="text-xl font-bold text-slate-800">{pageTitle}</h1>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                        <div className="relative">
-                            <select onChange={(e) => setLang(e.target.value)} defaultValue={lang} className="appearance-none bg-slate-100 text-slate-600 rounded-md py-1.5 pl-3 pr-8 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500">
-                                <option value="en">English</option>
-                                <option value="or">ଓଡିଆ (Odia)</option>
-                            </select>
-                        </div>
-                    </div>
-                </header>
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 p-4 md:p-6">
-                    <MainContent />
-                </main>
-            </div>
+
+      // --- UI PRIMITIVES & HELPER COMPONENTS ---
+
+      const Card = ({ children, className = '' }) => (
+        <div className={`bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6 ${className}`}>
+          {children}
         </div>
-    );
-};
+      );
 
-// --- MAIN APP COMPONENT ---
+      const ChartComponent = ({ type, data, options, chartId }) => {
+          const chartRef = useRef(null);
+          const canvasRef = useRef(null);
 
-export default function App() {
-  const [page, setPage] = useState('landing');
-  const [userRole, setUserRole] = useState(null);
-  const [lang, setLang] = useState('en');
-  const t = translations[lang];
+          useEffect(() => {
+              if (!window.Chart) { console.error("Chart.js not loaded"); return; }
+              if (chartRef.current) { chartRef.current.destroy(); }
+              const ctx = canvasRef.current.getContext('2d');
+              chartRef.current = new window.Chart(ctx, { type, data, options });
+              return () => { if (chartRef.current) { chartRef.current.destroy(); } };
+          }, [type, data, options]);
 
-  const handleLoginClick = () => setPage('login');
-  const handleLogin = (role) => { setUserRole(role); setPage('dashboard'); };
-  const handleLogout = () => { setUserRole(null); setPage('landing'); };
+          return <canvas ref={canvasRef} id={chartId}></canvas>;
+      };
 
-  useEffect(() => {
-    const scripts = [
-      { id: 'chartjs', src: 'https://cdn.jsdelivr.net/npm/chart.js' },
-      { id: 'leafletjs', src: 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js' }
-    ];
-    const styles = [
-      { id: 'leafletcss', href: 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css' },
-    ];
-    
-    scripts.forEach(s => {
-      if (!document.getElementById(s.id)) {
-        const script = document.createElement('script');
-        script.id = s.id;
-        script.src = s.src;
-        script.async = true;
-        document.body.appendChild(script);
+      const Icon = ({ name, className = "h-6 w-6" }) => {
+          const icons = {
+              'dashboard': <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />,
+              'reports': <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h4.5M15 3.75l3 3m0 0l-3 3m3-3H9" />,
+              'alerts': <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />,
+              'feedback': <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m3.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M12 21a8.967 8.967 0 01-2.312-6.022A8.967 8.967 0 0112.001 3a8.967 8.967 0 012.312 6.022A8.967 8.967 0 0112 21z" />,
+              'settings': <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />,
+              'logout': <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />,
+              'sun': <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />,
+              'battery': <path strokeLinecap="round" strokeLinejoin="round" d="M21 10.5h.375c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125H21M4.5 10.5H18V15H4.5v-4.5zM3.75 18h15A2.25 2.25 0 0021 15.75v-6.375A2.25 2.25 0 0018.75 7.125h-15A2.25 2.25 0 001.5 9.375v6.375A2.25 2.25 0 003.75 18z" />,
+              'up': <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.517l2.74-1.22m0 0l-3.75-.609m3.75.609V3.375" />,
+              'menu': <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />,
+          };
+          return (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                  {icons[name]}
+              </svg>
+          );
+      };
+
+      // --- PAGE COMPONENTS (Landing, Login) ---
+
+      const LandingPage = ({ onLoginClick, t }) => (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-center p-4">
+          <div className="max-w-4xl w-full">
+            <h1 className="text-4xl md:text-6xl font-bold text-sky-600">{t.projectName}</h1>
+            <p className="text-xl md:text-2xl mt-4 text-slate-600">{t.tagline}</p>
+            <p className="mt-8 text-lg text-slate-700 max-w-2xl mx-auto">{t.welcomeMessage}</p>
+            
+            <div className="mt-12">
+              <button onClick={onLoginClick} className="bg-sky-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-sky-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                {t.login}
+              </button>
+            </div>
+
+            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+              <Card className="bg-sky-50 border-sky-200">
+                <h3 className="text-4xl font-bold text-sky-700">{mockData.kpis.peoplePowered}</h3>
+                <p className="mt-2 text-slate-600">People Powered</p>
+              </Card>
+              <Card className="bg-emerald-50 border-emerald-200">
+                <h3 className="text-4xl font-bold text-emerald-700">{mockData.kpis.uptime}</h3>
+                <p className="mt-2 text-slate-600">System Uptime</p>
+              </Card>
+              <Card className="bg-indigo-50 border-indigo-200">
+                <h3 className="text-4xl font-bold text-indigo-700">{mockData.kpis.villages}</h3>
+                <p className="mt-2 text-slate-600">Villages Covered</p>
+              </Card>
+            </div>
+          </div>
+        </div>
+      );
+
+      const LoginPage = ({ onLogin, t }) => {
+        const [role, setRole] = useState('community');
+        const handleLogin = (e) => { e.preventDefault(); onLogin(role); };
+        
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+            <Card className="w-full max-w-md border-0 shadow-xl">
+              <h2 className="text-2xl font-bold text-center text-slate-800">{t.projectName}</h2>
+              <form onSubmit={handleLogin} className="mt-8 space-y-6">
+                <div>
+                  <label htmlFor="role-select" className="block text-sm font-medium text-slate-700">{t.selectRole}</label>
+                  <select id="role-select" value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500">
+                    <option value="community">{t.communityUser}</option>
+                    <option value="operator">{t.operator}</option>
+                    <option value="engineer">{t.engineer}</option>
+                    <option value="admin">{t.admin}</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">{t.username}</label>
+                  <input type="text" required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">{t.password}</label>
+                  <input type="password" required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
+                </div>
+                
+                <button type="submit" className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors">
+                  {t.login}
+                </button>
+              </form>
+            </Card>
+          </div>
+        );
+      };
+
+      // --- DASHBOARD PAGES (Placeholders & Settings) ---
+      const PlaceholderPage = ({ title, t }) => (
+          <Card>
+              <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+              <p className="mt-4 text-slate-500">{t.comingSoon}</p>
+          </Card>
+      );
+
+      const SettingsPage = ({ t }) => (
+          <div className="space-y-6">
+              <Card>
+                  <h2 className="text-xl font-bold text-slate-800">{t.profile}</h2>
+                  <form className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700">Full Name</label>
+                          <input type="text" defaultValue={mockData.user.name} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700">Email Address</label>
+                          <input type="email" defaultValue="aarav.g@example.com" className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500" />
+                      </div>
+                      <div className="md:col-span-2">
+                          <button type="submit" className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700">{t.saveChanges}</button>
+                      </div>
+                  </form>
+              </Card>
+              <Card>
+                  <h2 className="text-xl font-bold text-slate-800">{t.notifications}</h2>
+                  <div className="mt-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                          <span className="text-slate-600">Low balance alerts</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" defaultChecked className="sr-only peer" />
+                              <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-sky-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
+                          </label>
+                      </div>
+                      <div className="flex items-center justify-between">
+                          <span className="text-slate-600">Unusual usage alerts</span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" defaultChecked className="sr-only peer" />
+                              <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-sky-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
+                          </label>
+                      </div>
+                  </div>
+              </Card>
+          </div>
+      );
+
+
+      // --- DASHBOARD COMPONENTS ---
+
+      const CommunityDashboard = ({ t, lang }) => {
+          const [usagePeriod, setUsagePeriod] = useState('daily');
+          const data = mockData.community;
+          const usageChartData = {
+              labels: usagePeriod === 'daily' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['W1', 'W2', 'W3', 'W4'],
+              datasets: [{ label: t.energyUsage, data: data.usage[usagePeriod], backgroundColor: 'rgba(14, 165, 233, 0.2)', borderColor: 'rgba(14, 165, 233, 1)', borderWidth: 2, fill: true, tension: 0.4, pointBackgroundColor: 'rgba(14, 165, 233, 1)', pointRadius: 4 }]
+          };
+          return (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-6">
+                      <Card>
+                          <div className="flex justify-between items-center">
+                              <h3 className="font-bold text-lg text-slate-700">{t.energyUsage}</h3>
+                              <div className="flex space-x-1 p-1 bg-slate-100 rounded-lg">
+                                  <button onClick={() => setUsagePeriod('daily')} className={`px-3 py-1 text-sm rounded-md transition-colors ${usagePeriod === 'daily' ? 'bg-white shadow-sm text-sky-600 font-semibold' : 'text-slate-500'}`}>{t.daily}</button>
+                                  <button onClick={() => setUsagePeriod('weekly')} className={`px-3 py-1 text-sm rounded-md transition-colors ${usagePeriod === 'weekly' ? 'bg-white shadow-sm text-sky-600 font-semibold' : 'text-slate-500'}`}>{t.weekly}</button>
+                              </div>
+                          </div>
+                          <div className="mt-4 h-64"><ChartComponent type="line" data={usageChartData} options={{ responsive: true, maintainAspectRatio: false }} chartId="usageChart" /></div>
+                      </Card>
+                       <Card>
+                          <h3 className="font-bold text-lg text-slate-700">{t.feedbackFormTitle}</h3>
+                          <form className="mt-4 space-y-4">
+                              <textarea rows="4" placeholder={lang === 'en' ? 'Type your message here...' : 'ଆପଣଙ୍କ ମତାମତ ଏଠାରେ ଟାଇପ୍ କରନ୍ତୁ...'} className="w-full p-2 border border-slate-300 rounded-md focus:ring-sky-500 focus:border-sky-500"></textarea>
+                              <button type="submit" className="bg-sky-600 text-white px-4 py-2 rounded-md hover:bg-sky-700 transition-colors">{t.submit}</button>
+                          </form>
+                      </Card>
+                  </div>
+                  <div className="space-y-6">
+                      <Card className="text-center bg-sky-50 border-sky-200">
+                           <h3 className="font-semibold text-slate-600">{t.currentBalance}</h3>
+                           <p className="text-4xl font-bold text-sky-700 mt-2">₹{data.balance.toFixed(2)}</p>
+                      </Card>
+                      <Card>
+                           <h3 className="font-bold text-lg text-slate-700">{t.rechargeHistory}</h3>
+                           <ul className="mt-2 space-y-3">
+                               {data.rechargeHistory.map(item => ( <li key={item.id} className="flex justify-between text-sm items-center"><span className="text-slate-500">{item.date}</span> <span className="font-semibold text-slate-700">₹{item.amount}</span></li> ))}
+                           </ul>
+                      </Card>
+                       <Card className="bg-amber-50 border-l-4 border-amber-400">
+                           <h3 className="font-bold text-amber-800">{t.alerts}</h3>
+                           <p className="text-sm mt-2 text-amber-700">{t.lowBalanceAlert}</p>
+                           <p className="text-sm mt-2 text-amber-700">{t.unusualUsageAlert}</p>
+                      </Card>
+                  </div>
+              </div>
+          );
+      };
+
+      const OperatorDashboard = ({ t }) => {
+          const data = mockData.operator;
+          const loadChartData = { labels: [t.household, t.livelihood], datasets: [{ data: [data.load.household, data.load.livelihood], backgroundColor: ['#0ea5e9', '#10b981'], borderWidth: 0 }] };
+          return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <Card className="lg:col-span-2">
+                      <h3 className="font-bold text-lg text-slate-700">Technical Monitoring</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-center">
+                          <div className="p-2 rounded-lg bg-slate-50"> <Icon name="sun" className="mx-auto text-amber-500 h-8 w-8" /> <p className="font-bold text-xl mt-1">{data.pvGeneration} <span className="text-sm font-normal">kWh</span></p> <p className="text-xs text-slate-500">{t.pvGeneration}</p> </div>
+                          <div className="p-2 rounded-lg bg-slate-50"> <Icon name="battery" className="mx-auto text-emerald-500 h-8 w-8" /> <p className="font-bold text-xl mt-1">{data.battery.soc}%</p> <p className="text-xs text-slate-500">{t.stateOfCharge}</p> </div>
+                          <div className="p-2 rounded-lg bg-slate-50"> <div className="w-16 h-16 mx-auto"><ChartComponent type="doughnut" data={loadChartData} options={{ responsive: true, plugins: { legend: { display: false } } }} chartId="loadChart" /></div> <p className="text-xs text-slate-500 -mt-2">{t.loadBreakdown}</p> </div>
+                          <div className="p-2 rounded-lg bg-slate-50"> <Icon name="up" className="mx-auto text-sky-500 h-8 w-8" /> <p className="font-bold text-xl mt-1">{data.uptime}%</p> <p className="text-xs text-slate-500">{t.systemUptime}</p> </div>
+                      </div>
+                  </Card>
+                  <Card>
+                      <h3 className="font-bold text-lg text-slate-700">{t.batteryStatus}</h3>
+                      <ul className="text-sm space-y-2 mt-2">
+                          <li className="flex justify-between"><span>{t.stateOfHealth}:</span> <span className="font-semibold">{data.battery.soh}%</span></li>
+                          <li className="flex justify-between"><span>Cycles:</span> <span className="font-semibold">{data.battery.cycles}</span></li>
+                          <li className="flex justify-between"><span>Temperature:</span> <span className="font-semibold">{data.battery.temp}°C</span></li>
+                      </ul>
+                  </Card>
+                  <Card>
+                      <h3 className="font-bold text-lg text-slate-700">{t.faultLogs}</h3>
+                      <ul className="mt-2 space-y-2 text-sm"> {data.faults.map(f => <li key={f.id}><span className="font-mono bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs mr-2">{f.code}</span> {f.desc} <span className="text-slate-400 block text-xs">{f.time}</span></li>)} </ul>
+                  </Card>
+                  <Card>
+                      <h3 className="font-bold text-lg text-slate-700">{t.maintenanceTasks}</h3>
+                       <div className="mt-2 space-y-2">
+                          <button className="w-full text-left p-2 bg-slate-100 hover:bg-slate-200 rounded transition-colors">{t.panelCleaning}</button>
+                          <button className="w-full text-left p-2 bg-slate-100 hover:bg-slate-200 rounded transition-colors">{t.batteryChecks}</button>
+                          <button className="w-full text-left p-2 bg-slate-100 hover:bg-slate-200 rounded transition-colors">{t.inverterReset}</button>
+                       </div>
+                  </Card>
+                  <Card>
+                      <h3 className="font-bold text-lg text-slate-700">{t.complaints}</h3>
+                      <ul className="mt-2 space-y-2 text-sm"> {data.complaints.map(c => ( <li key={c.id} className="p-2 border border-slate-200 rounded-md"> <p className="font-semibold text-slate-800">{c.user}: <span className="font-normal text-slate-600">{c.issue}</span></p> <span className={`px-2 py-0.5 text-xs rounded-full ${c.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>{c.status}</span> </li> ))} </ul>
+                  </Card>
+              </div>
+          );
+      };
+
+      const EngineerDashboard = ({ t }) => {
+          const data = mockData.engineer;
+          const uptimeData = { labels: data.villages.map(v => v.name), datasets: [{ label: 'Uptime %', data: data.villages.map(v => v.uptime), backgroundColor: data.villages.map(v => v.status === 'red' ? '#f43f5e' : v.status === 'orange' ? '#f97316' : '#10b981'), borderRadius: 4 }] };
+          return (
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                  <div className="lg:col-span-3 space-y-6">
+                      <Card>
+                           <h3 className="font-bold text-lg text-slate-700">{t.uptimeComparison}</h3>
+                           <div className="mt-4 h-80"><ChartComponent type="bar" data={uptimeData} options={{ indexAxis: 'y', responsive: true, maintainAspectRatio: false }} chartId="uptimeChart" /></div>
+                      </Card>
+                       <Card>
+                          <h3 className="font-bold text-lg text-slate-700">{t.faultHeatmap}</h3>
+                          <div className="mt-2 p-4 bg-slate-100 rounded text-center text-slate-500"> [Fault Heatmap Visualization Placeholder] </div>
+                      </Card>
+                  </div>
+                  <div className="lg:col-span-2 space-y-6">
+                      <Card>
+                          <div className="flex justify-between items-center">
+                              <h3 className="font-bold text-lg text-slate-700">{t.districtAnalytics}</h3>
+                              <button className="text-sm bg-sky-600 text-white px-3 py-1 rounded hover:bg-sky-700 transition-colors">{t.exportLogs}</button>
+                          </div>
+                           <table className="w-full mt-4 text-sm text-left">
+                              <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                                  <tr>
+                                      <th className="py-3 px-4">{t.village}</th><th className="py-3 px-4">Uptime</th><th className="py-3 px-4">Faults</th><th className="py-3 px-4">{t.status}</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                  {data.villages.map(v => (
+                                      <tr key={v.id} className="hover:bg-slate-50">
+                                          <td className="py-3 px-4 font-medium text-slate-800">{v.name}</td>
+                                          <td className="py-3 px-4">{v.uptime}%</td>
+                                          <td className="py-3 px-4">{v.faults}</td>
+                                          <td className="py-3 px-4"><span className={`h-3 w-3 inline-block rounded-full ${v.status === 'red' ? 'bg-rose-500' : v.status === 'orange' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span></td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </Card>
+                      <Card>
+                           <h3 className="font-bold text-lg text-slate-700">{t.predictiveMaintenance}</h3>
+                           <ul className="mt-2 space-y-2 text-sm"> {data.predictiveAlerts.map(a => <li key={a.id} className="p-2 bg-amber-50 border-l-2 border-amber-500 rounded">{a.alert}</li>)} </ul>
+                      </Card>
+                  </div>
+              </div>
+          );
+      };
+
+      const AdminDashboard = ({ t }) => {
+          const data = mockData.admin;
+          const MapComponent = () => {
+              const mapRef = useRef(null);
+              useEffect(() => {
+                  if (!window.L) return;
+                  // Check if a map is already initialized on the container
+                  const mapContainer = document.getElementById('map');
+                  if(mapContainer && mapContainer._leaflet_id) {
+                    mapContainer._leaflet_id = null; // Prevent Leaflet from throwing "Map container is already initialized" error
+                  }
+                  
+                  const map = window.L.map('map').setView([20.9517, 85.0985], 7);
+                  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+                  const villages = [{ name: 'Kendupali', coords: [21.2, 84.0], status: 'green'}, { name: 'Badmal', coords: [20.8, 83.5], status: 'orange'}, { name: 'Sargipali', coords: [22.0, 84.2], status: 'red'}, { name: 'Nuagaon', coords: [20.5, 85.5], status: 'green'}];
+                  villages.forEach(v => {
+                      const color = v.status === 'green' ? '#10b981' : v.status === 'orange' ? '#f97316' : '#f43f5e';
+                      const icon = window.L.divIcon({ className: 'custom-div-icon', html: `<div style="background-color:${color};" class="marker-pin"></div>`, iconSize: [30, 42], iconAnchor: [15, 42] });
+                      window.L.marker(v.coords, {icon}).addTo(map).bindPopup(v.name);
+                  });
+                  return () => map.remove();
+              }, []);
+              return <div id="map" ref={mapRef} style={{ height: '400px' }} className="rounded-lg bg-slate-200"></div>;
+          };
+          
+          return (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="lg:col-span-3">
+                      <h3 className="font-bold text-lg text-slate-700">{t.systemOverview}</h3>
+                      <div className="mt-2"><MapComponent /></div>
+                  </Card>
+                  <Card>
+                      <h3 className="font-bold text-lg text-slate-700">{t.financialMonitoring}</h3>
+                      <div className="mt-4 space-y-2">
+                          <div className="p-2 bg-emerald-50 rounded"> <p className="text-sm text-emerald-700">{t.revenueVsOpex}</p> <p className="font-bold text-lg text-emerald-800">+12% YTD</p> </div>
+                          <div className="p-2 bg-sky-50 rounded"> <p className="text-sm text-sky-700">{t.sustainabilityScore}</p> <p className="font-bold text-lg text-sky-800">8.2 / 10</p> </div>
+                      </div>
+                  </Card>
+                  <Card className="lg:col-span-2">
+                      <div className="flex justify-between items-center">
+                          <h3 className="font-bold text-lg text-slate-700">{t.userManagement}</h3>
+                          <button className="text-sm bg-sky-600 text-white px-3 py-1 rounded hover:bg-sky-700 transition-colors">{t.addUser}</button>
+                      </div>
+                      <table className="w-full mt-4 text-sm text-left">
+                          <thead className="text-xs text-slate-500 uppercase bg-slate-50"><tr><th className="py-3 px-4">Name</th><th className="py-3 px-4">{t.village} / Area</th><th className="py-3 px-4">{t.role}</th><th className="py-3 px-4">{t.action}</th></tr></thead>
+                          <tbody className="divide-y divide-slate-200">
+                              {data.users.map(u => ( <tr key={u.id} className="hover:bg-slate-50"><td className="py-3 px-4 font-medium text-slate-800">{u.name}</td><td className="py-3 px-4">{u.village}</td><td className="py-3 px-4">{u.role}</td><td className="py-3 px-4 space-x-2"><button className="text-sky-600 hover:underline">{t.edit}</button><button className="text-rose-600 hover:underline">{t.delete}</button></td></tr> ))}
+                          </tbody>
+                      </table>
+                  </Card>
+              </div>
+          );
+      };
+
+
+      // --- MAIN DASHBOARD LAYOUT ---
+
+      const Dashboard = ({ userRole, onLogout, t, setLang, lang }) => {
+          const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+          const [activeView, setActiveView] = useState('dashboard');
+          
+          const roleName = { community: t.communityUser, operator: t.operator, engineer: t.engineer, admin: t.admin }[userRole];
+          const pageTitle = { dashboard: t.dashboard, reports: t.reports, alerts: t.alerts, feedback: t.communityFeedback, settings: t.settings }[activeView];
+          
+          const navItems = [
+            { id: 'dashboard', name: t.dashboard, icon: 'dashboard' },
+            { id: 'reports', name: t.reports, icon: 'reports' },
+            { id: 'alerts', name: t.alerts, icon: 'alerts' },
+            { id: 'feedback', name: t.communityFeedback, icon: 'feedback' },
+            { id: 'settings', name: t.settings, icon: 'settings' },
+          ];
+
+          const handleNavClick = (viewId) => {
+            setActiveView(viewId);
+            if (window.innerWidth < 768) setIsSidebarOpen(false);
+          }
+          
+          const MainContent = () => {
+              switch (activeView) {
+                  case 'dashboard': return { community: <CommunityDashboard t={t} lang={lang}/>, operator: <OperatorDashboard t={t}/>, engineer: <EngineerDashboard t={t}/>, admin: <AdminDashboard t={t}/> }[userRole];
+                  case 'reports': return <PlaceholderPage title={t.reports} t={t} />;
+                  case 'alerts': return <PlaceholderPage title={t.alerts} t={t} />;
+                  case 'feedback': return <PlaceholderPage title={t.communityFeedback} t={t} />;
+                  case 'settings': return <SettingsPage t={t} />;
+                  default: return <CommunityDashboard t={t} lang={lang} />;
+              }
+          };
+
+          const Sidebar = () => (
+              <aside className={`fixed inset-y-0 left-0 bg-slate-800 text-slate-200 w-64 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30 flex flex-col`}>
+                  <div className="p-4 border-b border-slate-700">
+                      <h2 className="text-xl font-bold text-white">{t.projectName}</h2>
+                  </div>
+                  <div className="p-4 border-b border-slate-700 flex items-center space-x-3">
+                      <img src={mockData.user.avatar} alt="User Avatar" className="h-10 w-10 rounded-full" />
+                      <div>
+                          <p className="font-semibold text-white">{mockData.user.name}</p>
+                          <p className="text-xs text-sky-300">{roleName}</p>
+                      </div>
+                  </div>
+                  <nav className="mt-4 flex-1">
+                      {navItems.map(item => (
+                          <a key={item.id} href="#" onClick={() => handleNavClick(item.id)} className={`flex items-center px-4 py-3 m-2 rounded-lg transition-colors ${activeView === item.id ? 'bg-sky-600 text-white' : 'hover:bg-slate-700'}`}>
+                              <Icon name={item.icon} className="h-5 w-5"/>
+                              <span className="ml-4 text-sm font-medium">{item.name}</span>
+                          </a>
+                      ))}
+                  </nav>
+                  <div className="p-2">
+                      <a href="#" onClick={onLogout} className="flex items-center px-4 py-3 m-2 rounded-lg hover:bg-slate-700 transition-colors">
+                          <Icon name='logout' className="h-5 w-5"/>
+                          <span className="ml-4 text-sm font-medium">{t.logout}</span>
+                      </a>
+                  </div>
+              </aside>
+          );
+
+          return (
+              <div className="flex h-screen bg-slate-100 font-sans">
+                  <Sidebar />
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                      <header className="flex justify-between items-center p-4 bg-white border-b border-slate-200">
+                          <div className="flex items-center">
+                              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-slate-500 md:hidden mr-4"> <Icon name="menu" /> </button>
+                              <h1 className="text-xl font-bold text-slate-800">{pageTitle}</h1>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                              <div className="relative">
+                                  <select onChange={(e) => setLang(e.target.value)} defaultValue={lang} className="appearance-none bg-slate-100 text-slate-600 rounded-md py-1.5 pl-3 pr-8 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500">
+                                      <option value="en">English</option>
+                                      <option value="or">ଓଡିଆ (Odia)</option>
+                                  </select>
+                              </div>
+                          </div>
+                      </header>
+                      <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 p-4 md:p-6">
+                          <MainContent />
+                      </main>
+                  </div>
+              </div>
+          );
+      };
+
+      // --- MAIN APP COMPONENT ---
+
+      function App() {
+        const [page, setPage] = useState('landing');
+        const [userRole, setUserRole] = useState(null);
+        const [lang, setLang] = useState('en');
+        const t = translations[lang];
+
+        const handleLoginClick = () => setPage('login');
+        const handleLogin = (role) => { setUserRole(role); setPage('dashboard'); };
+        const handleLogout = () => { setUserRole(null); setPage('landing'); };
+
+        if (page === 'landing') return <LandingPage onLoginClick={handleLoginClick} t={t} />;
+        if (page === 'login') return <LoginPage onLogin={handleLogin} t={t}/>;
+        if (page === 'dashboard' && userRole) return <Dashboard userRole={userRole} onLogout={handleLogout} t={t} setLang={setLang} lang={lang} />;
+        return <LandingPage onLoginClick={handleLoginClick} t={t} />;
       }
-    });
-    
-    styles.forEach(s => {
-      if (!document.getElementById(s.id)) {
-        const link = document.createElement('link');
-        link.id = s.id;
-        link.rel = 'stylesheet';
-        link.href = s.href;
-        document.head.appendChild(link);
-      }
-    });
-    
-    if (!document.getElementById('marker-style')) {
-        const style = document.createElement('style');
-        style.id = 'marker-style';
-        style.innerHTML = `.marker-pin { width: 30px; height: 30px; border-radius: 50% 50% 50% 0; background: #c30b82; position: absolute; transform: rotate(-45deg); left: 50%; top: 50%; margin: -15px 0 0 -15px; } .marker-pin::after { content: ''; width: 14px; height: 14px; margin: 8px 0 0 8px; background: #fff; position: absolute; border-radius: 50%; }`;
-        document.head.appendChild(style);
-    }
-  }, []);
+      
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
 
-  if (page === 'landing') return <LandingPage onLoginClick={handleLoginClick} t={t} />;
-  if (page === 'login') return <LoginPage onLogin={handleLogin} t={t}/>;
-  if (page === 'dashboard' && userRole) return <Dashboard userRole={userRole} onLogout={handleLogout} t={t} setLang={setLang} lang={lang} />;
-  return <LandingPage onLoginClick={handleLoginClick} t={t} />;
-}
-
+    </script>
+</body>
+</html>
